@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.github.lcn29</groupId>
-    <artifactId>spring-boot-web-starter</artifactId>
+    <artifactId>redis-spring-boot-starter</artifactId>
     <version>${revision}</version>
 
     <name>redis-spring-boot-starter</name>
@@ -25,7 +25,6 @@
         <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
     </properties>
-
 
     <dependencyManagement>
         <dependencies>

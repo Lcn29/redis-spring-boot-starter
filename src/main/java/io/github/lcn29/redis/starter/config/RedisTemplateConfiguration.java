@@ -8,18 +8,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
-import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
-import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
-import org.springframework.data.redis.connection.lettuce.LettucePoolingClientConfiguration;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
@@ -34,25 +26,8 @@ import java.nio.charset.StandardCharsets;
  * @date 2024-08-12 21:57:25
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(RedisProperties.class)
-public class CustomRedisAutoConfiguration {
-
-    private final static Logger logger = LoggerFactory.getLogger(CustomRedisAutoConfiguration.class);
-
-    private final RedisProperties redisProperties;
-
-    static {
-        logger.info("CustomRedisAutoConfiguration Init ...");
-    }
-
-    public CustomRedisAutoConfiguration(RedisProperties redisProperties) {
-        this.redisProperties = redisProperties;
-    }
-
-    @Bean
-    public LettuceConnectionFactory redisConnectionFactory() {
-        return new LettuceConnectionFactory(getStandaloneConfig(), getLettuceClientConfiguration());
-    }
+@AutoConfigureAfter(LettuceConnectionConfiguration.class)
+public class RedisTemplateConfiguration {
 
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory, StringRedisSerializer stringRedisSerializer, Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer) {
@@ -88,7 +63,6 @@ public class CustomRedisAutoConfiguration {
         return stringRedisTemplate;
     }
 
-
     /**
      * 获取 StringRedisSerializer, 用来序列化 redis key
      *
@@ -107,42 +81,6 @@ public class CustomRedisAutoConfiguration {
     @Bean
     public Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer() {
         return new Jackson2JsonRedisSerializer<>(redisObjectMapper(), Object.class);
-    }
-
-    /**
-     * 获取 Redis 单节点的配置
-     *
-     * @return Redis 单节点配置
-     */
-    private RedisStandaloneConfiguration getStandaloneConfig() {
-        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
-        config.setHostName(redisProperties.getHost());
-        config.setPort(redisProperties.getPort());
-        config.setPassword(redisProperties.getPassword());
-        config.setDatabase(redisProperties.getDatabase());
-        return config;
-    }
-
-    /**
-     * 获取 lettucePool 的配置
-     *
-     * @return lettucePool 配置
-     */
-    private LettuceClientConfiguration getLettuceClientConfiguration() {
-
-        GenericObjectPoolConfig<Object> genericObjectPoolConfig = new GenericObjectPoolConfig<>();
-        genericObjectPoolConfig.setMaxIdle(redisProperties.getLettuce().getPool().getMaxIdle());
-        genericObjectPoolConfig.setMinIdle(redisProperties.getLettuce().getPool().getMinIdle());
-        genericObjectPoolConfig.setMaxTotal(redisProperties.getLettuce().getPool().getMaxActive());
-        genericObjectPoolConfig.setMaxWait(redisProperties.getLettuce().getPool().getMaxWait());
-
-        if (redisProperties.getLettuce().getPool().getTimeBetweenEvictionRuns() != null) {
-            genericObjectPoolConfig.setTimeBetweenEvictionRuns(
-                    redisProperties.getLettuce().getPool().getTimeBetweenEvictionRuns());
-        }
-
-        return LettucePoolingClientConfiguration.builder().commandTimeout(redisProperties.getTimeout()).shutdownTimeout(
-                redisProperties.getLettuce().getShutdownTimeout()).poolConfig(genericObjectPoolConfig).build();
     }
 
     /**
