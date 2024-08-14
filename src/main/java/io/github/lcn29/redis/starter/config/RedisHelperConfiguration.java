@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.github.lcn29.redis.starter.cache.RedisSupport;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,7 +28,12 @@ import java.nio.charset.StandardCharsets;
  */
 @Configuration(proxyBeanMethods = false)
 @AutoConfigureAfter(LettuceConnectionConfiguration.class)
-public class RedisTemplateConfiguration {
+public class RedisHelperConfiguration {
+
+    @Bean
+    public RedisSupport redisSupport(RedisTemplate<String, Object> redisTemplate, StringRedisSerializer stringRedisSerializer, Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer) {
+        return new RedisSupport(redisTemplate, stringRedisSerializer, jackson2JsonRedisSerializer);
+    }
 
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory, StringRedisSerializer stringRedisSerializer, Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer) {
