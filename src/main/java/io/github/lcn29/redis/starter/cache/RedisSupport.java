@@ -25,7 +25,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class RedisSupport {
 
-    private final static String DEFAULT_LOCK_VALUE = "RedisLock";
+    private final static long DEFAULT_TIMEOUT_MILLISECONDS = 3 * 1000;
+
+    private final static long DEFAULT_ACQUIRE_RESOLUTION_MILLIS = 100;
+
+    private final static long DEFAULT_ACQUIRE_LOCK_RANDOM_TIME_RANGE = 100;
 
     private final StringRedisSerializer stringRedisSerializer;
     private final Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer;
@@ -39,6 +43,15 @@ public class RedisSupport {
         this.redisTemplate = redisTemplate;
     }
 
+    /**
+     * 加锁
+     *
+     * @param redisKeyDesc 缓存 key 描述
+     * @param redisValue   缓存 value
+     * @param expireTime   过期时间
+     * @param params       拼接 key 的参数
+     * @return 是否加锁成功
+     */
     public boolean lock(RedisKeyDesc redisKeyDesc, Object redisValue, Long expireTime, Object... params) {
 
         return Boolean.TRUE.equals(redisTemplate.execute((RedisCallback<Boolean>) connection -> {
@@ -54,21 +67,58 @@ public class RedisSupport {
         }));
     }
 
-    public boolean tryLock(RedisKeyDesc redisKeyDesc, Object redisValue, Long expireTime, Long lockTryTime, Object... params) {
+    /**
+     * 尝试加锁
+     *
+     * @param redisKeyDesc 缓存 key 描述
+     * @param redisValue   缓存 value
+     * @param expireTime   过期时间
+     * @param lockTryTime  尝试加锁时间
+     * @param params       拼接 key 的参数
+     * @return 是否加锁成功
+     */
+    public boolean tryLock(RedisKeyDesc redisKeyDesc, Object redisValue, long expireTime, Long lockTryTime, Object... params) {
 
-        // TODO
         return Boolean.TRUE.equals(redisTemplate.execute((RedisCallback<Boolean>) connection -> {
+
             byte[] keySerializeByte = stringRedisSerializer.serialize(generateRedisKey(redisKeyDesc, params));
             byte[] valueSerializeByte = jackson2JsonRedisSerializer.serialize(redisValue);
             if (keySerializeByte == null || valueSerializeByte == null) {
                 return false;
             }
-            return connection.stringCommands()
-                    .set(keySerializeByte, valueSerializeByte, Expiration.from(expireTime, TimeUnit.MILLISECONDS),
-                            RedisStringCommands.SetOption.SET_IF_ABSENT);
+
+            long tryTimeout = lockTryTime > 0 ? lockTryTime : DEFAULT_TIMEOUT_MILLISECONDS;
+
+            while (true) {
+
+                Boolean lockResult = connection.stringCommands()
+                        .set(keySerializeByte, valueSerializeByte, Expiration.from(expireTime, TimeUnit.MILLISECONDS),
+                                RedisStringCommands.SetOption.SET_IF_ABSENT);
+
+                if (Boolean.TRUE.equals(lockResult)) {
+                    return true;
+                }
+
+                long sleepMillSeconds = randomExpireTime(DEFAULT_ACQUIRE_RESOLUTION_MILLIS, DEFAULT_ACQUIRE_LOCK_RANDOM_TIME_RANGE);
+                tryTimeout = tryTimeout - sleepMillSeconds;
+                if (tryTimeout <= 0) {
+                    break;
+                }
+                // 线程休眠
+                sleep(sleepMillSeconds);
+            }
+            return false;
         }));
+
     }
 
+    /**
+     * 解锁
+     *
+     * @param redisKeyDesc 缓存 key 描述
+     * @param params       拼接 key 的参数
+     * @return 是否解锁成功
+     */
     public boolean unlock(RedisKeyDesc redisKeyDesc, Object... params) {
 
         return Boolean.TRUE.equals(redisTemplate.execute((RedisCallback<Boolean>) connection -> {
@@ -81,6 +131,14 @@ public class RedisSupport {
         }));
     }
 
+    /**
+     * 尝试解锁
+     *
+     * @param redisKeyDesc 缓存 key 描述
+     * @param lockValue    锁值
+     * @param params       拼接 key 的参数
+     * @return 是否解锁成功
+     */
     public boolean tryUnLock(RedisKeyDesc redisKeyDesc, Object lockValue, Object... params) {
         return Boolean.TRUE.equals(redisTemplate.execute((RedisCallback<Boolean>) connection -> {
             byte[] keySerializeByte = stringRedisSerializer.serialize(generateRedisKey(redisKeyDesc, params));
@@ -337,4 +395,20 @@ public class RedisSupport {
         }
         return (T) obj;
     }
+
+    /**
+     * 睡眠
+     *
+     * @param millSeconds 睡眠时间
+     */
+    private void sleep(long millSeconds) {
+        if (millSeconds <= 0) {
+            return;
+        }
+        try {
+            TimeUnit.MILLISECONDS.sleep(millSeconds);
+        } catch (InterruptedException ignored) {
+        }
+    }
+
 }

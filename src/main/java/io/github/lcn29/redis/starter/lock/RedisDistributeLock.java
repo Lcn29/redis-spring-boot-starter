@@ -1,4 +1,4 @@
-package io.github.lcn29.redis.starter.annotation;
+package io.github.lcn29.redis.starter.lock;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -19,22 +19,33 @@ public @interface RedisDistributeLock {
 
     /**
      * 锁的 key
-     *
-     * @return key
      */
-    String key();
+    String keyDesc();
+
+    /**
+     * 锁的 key 属性
+     */
+    String[] keyField() default "";
+
+    /**
+     * 锁的 value
+     *
+     * @return value
+     */
+    String lockValue() default "";
 
     /**
      * 锁的过期时间, 单位毫秒
      *
      * @return 过期时间
      */
-    long expireTime() default 30000;
+    long expireTime() default 1000;
 
     /**
      * 获取锁的超时时间, 单位毫秒
      *
      * @return 超时时间
      */
-    long timeout() default 10000;
+    long acquireTimeout() default 3000;
+
 }

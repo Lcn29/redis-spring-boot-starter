@@ -45,6 +45,11 @@
             <artifactId>spring-boot</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- auto configure -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

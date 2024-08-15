@@ -38,14 +38,4 @@ public interface RedisKeyDesc {
         return String.format(keyDesc(), params);
     }
 
-    /**
-     * 是否永不过期
-     *
-     * @return 是否永不过期
-     */
-    default boolean notExpire() {
-        return NO_EXPIRE_MARK == expireTime();
-    }
-
-
 }
